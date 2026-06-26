@@ -4,6 +4,18 @@ import os
 # Load database connection string and options from environment variables.
 # Define default values for CLI run profiles and clustering parameters.
 
+from pathlib import Path
+
+# Load env variables from .env if it exists
+env_path = Path(__file__).parent / ".env"
+if env_path.exists():
+    with open(env_path, "r") as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, val = line.split("=", 1)
+                os.environ[key.strip()] = val.strip()
+
 # Database URL connection string
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/news_pulse")
 

@@ -7,9 +7,9 @@
 - [x] Dependencies installed
 - [x] Git repository initialized
 - [x] Initial commit completed
+- [x] Database implementation
 
 Pending:
-- Database implementation
 - RSS ingestion
 - Article extraction
 - Clustering
