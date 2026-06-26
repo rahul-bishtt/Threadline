@@ -1,23 +1,36 @@
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import contextlib
+import time
 from typing import List, Dict, Any, Set, Generator
 from config import DATABASE_URL
-"""
-PostgreSQL Scraper Database Access Module.
-"""
 
-def connect() -> psycopg2.extensions.connection:
+def connect(max_retries: int = 3, initial_delay: float = 1.0) -> psycopg2.extensions.connection:
     """
     Establishes and returns a connection to the PostgreSQL database.
+    Implements retries with exponential backoff on failure.
+
+    Args:
+        max_retries (int): Maximum connection attempts. Defaults to 3.
+        initial_delay (float): Delay in seconds before first retry. Defaults to 1.0.
 
     Returns:
         psycopg2.extensions.connection: The database connection object.
 
     Errors:
-        psycopg2.OperationalError: If connection to database fails.
+        psycopg2.OperationalError: If connection to database fails after all retries.
     """
-    return psycopg2.connect(DATABASE_URL)
+    delay = initial_delay
+    for attempt in range(1, max_retries + 1):
+        try:
+            return psycopg2.connect(DATABASE_URL)
+        except psycopg2.OperationalError as e:
+            if attempt == max_retries:
+                print(f"Error: Final database connection attempt failed: {e}")
+                raise e
+            print(f"Warning: Database connection attempt {attempt} failed: {e}. Retrying in {delay}s...")
+            time.sleep(delay)
+            delay *= 2.0
 
 @contextlib.contextmanager
 def transaction(conn: psycopg2.extensions.connection) -> Generator[psycopg2.extensions.cursor, None, None]:
@@ -65,31 +78,60 @@ def article_exists(url: str, cursor: psycopg2.extensions.cursor = None) -> bool:
         cursor.execute(sql, (url,))
         return cursor.fetchone() is not None
 
-    with connect() as conn:
-        with conn.cursor() as cur:
-            cur.execute(sql, (url,))
-            return cur.fetchone() is not None
+    max_retries = 3
+    delay = 1.0
+    for attempt in range(1, max_retries + 1):
+        try:
+            with connect() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(sql, (url,))
+                    return cur.fetchone() is not None
+        except psycopg2.Error as e:
+            if attempt == max_retries:
+                raise e
+            print(f"Warning: article_exists query failed (attempt {attempt}): {e}. Retrying in {delay}s...")
+            time.sleep(delay)
+            delay *= 2.0
 
-def insert_article(article: Dict[str, Any], cursor: psycopg2.extensions.cursor = None) -> int:
+def insert_article(article: Dict[str, Any], cursor: psycopg2.extensions.cursor = None, overwrite: bool = False) -> int:
     """
     Inserts a single news article record into the database.
+    If overwrite is True, updates the existing row on conflict.
+    If overwrite is False, does nothing on conflict.
 
     Args:
         article (dict): Containing keys 'source', 'title', 'summary', 'body_text', 'url', 'published_at', 'cluster_id'.
         cursor (psycopg2.extensions.cursor, optional): Active transaction cursor.
+        overwrite (bool): If True, reprocesses fields on UNIQUE URL conflict.
 
     Returns:
-        int: The primary key ID of the inserted article.
+        int: The primary key ID of the inserted or updated article. Returns None if skipped.
 
     Errors:
-        psycopg2.IntegrityError: If the URL is not unique or cluster_id reference constraint fails.
+        psycopg2.IntegrityError: If reference constraints fail.
         psycopg2.Error: On query execution errors.
     """
-    sql = """
-        INSERT INTO articles (source, title, summary, body_text, url, published_at, cluster_id)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
-        RETURNING id;
-    """
+    if overwrite:
+        sql = """
+            INSERT INTO articles (source, title, summary, body_text, url, published_at, cluster_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (url) DO UPDATE SET
+                source = EXCLUDED.source,
+                title = EXCLUDED.title,
+                summary = EXCLUDED.summary,
+                body_text = EXCLUDED.body_text,
+                published_at = EXCLUDED.published_at,
+                fetched_at = now()
+            RETURNING id;
+        """
+    else:
+        sql = """
+            INSERT INTO articles (source, title, summary, body_text, url, published_at, cluster_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (url) DO NOTHING
+            RETURNING id;
+        """
+
     params = (
         article.get("source"),
         article.get("title"),
@@ -102,12 +144,24 @@ def insert_article(article: Dict[str, Any], cursor: psycopg2.extensions.cursor =
 
     if cursor:
         cursor.execute(sql, params)
-        return cursor.fetchone()["id"]
+        row = cursor.fetchone()
+        return row["id"] if row else None
 
-    with connect() as conn:
-        with transaction(conn) as cur:
-            cur.execute(sql, params)
-            return cur.fetchone()["id"]
+    max_retries = 3
+    delay = 1.0
+    for attempt in range(1, max_retries + 1):
+        try:
+            with connect() as conn:
+                with transaction(conn) as cur:
+                    cur.execute(sql, params)
+                    row = cur.fetchone()
+                    return row["id"] if row else None
+        except psycopg2.Error as e:
+            if attempt == max_retries:
+                raise e
+            print(f"Warning: insert_article query failed (attempt {attempt}): {e}. Retrying in {delay}s...")
+            time.sleep(delay)
+            delay *= 2.0
 
 def insert_cluster(label: str, cursor: psycopg2.extensions.cursor = None) -> int:
     """
@@ -129,10 +183,20 @@ def insert_cluster(label: str, cursor: psycopg2.extensions.cursor = None) -> int
         cursor.execute(sql, (label,))
         return cursor.fetchone()["id"]
 
-    with connect() as conn:
-        with transaction(conn) as cur:
-            cur.execute(sql, (label,))
-            return cur.fetchone()["id"]
+    max_retries = 3
+    delay = 1.0
+    for attempt in range(1, max_retries + 1):
+        try:
+            with connect() as conn:
+                with transaction(conn) as cur:
+                    cur.execute(sql, (label,))
+                    return cur.fetchone()["id"]
+        except psycopg2.Error as e:
+            if attempt == max_retries:
+                raise e
+            print(f"Warning: insert_cluster query failed (attempt {attempt}): {e}. Retrying in {delay}s...")
+            time.sleep(delay)
+            delay *= 2.0
 
 def assign_cluster(article_url: str, cluster_id: int, cursor: psycopg2.extensions.cursor = None) -> bool:
     """
@@ -155,10 +219,20 @@ def assign_cluster(article_url: str, cluster_id: int, cursor: psycopg2.extension
         cursor.execute(sql, (cluster_id, article_url))
         return cursor.fetchone() is not None
 
-    with connect() as conn:
-        with transaction(conn) as cur:
-            cur.execute(sql, (cluster_id, article_url))
-            return cur.fetchone() is not None
+    max_retries = 3
+    delay = 1.0
+    for attempt in range(1, max_retries + 1):
+        try:
+            with connect() as conn:
+                with transaction(conn) as cur:
+                    cur.execute(sql, (cluster_id, article_url))
+                    return cur.fetchone() is not None
+        except psycopg2.Error as e:
+            if attempt == max_retries:
+                raise e
+            print(f"Warning: assign_cluster query failed (attempt {attempt}): {e}. Retrying in {delay}s...")
+            time.sleep(delay)
+            delay *= 2.0
 
 def get_existing_clusters(cursor: psycopg2.extensions.cursor = None) -> List[Dict[str, Any]]:
     """
@@ -179,17 +253,27 @@ def get_existing_clusters(cursor: psycopg2.extensions.cursor = None) -> List[Dic
         cursor.execute(sql)
         return list(cursor.fetchall())
 
-    with connect() as conn:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(sql)
-            return list(cur.fetchall())
+    max_retries = 3
+    delay = 1.0
+    for attempt in range(1, max_retries + 1):
+        try:
+            with connect() as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    cur.execute(sql)
+                    return list(cur.fetchall())
+        except psycopg2.Error as e:
+            if attempt == max_retries:
+                raise e
+            print(f"Warning: get_existing_clusters query failed (attempt {attempt}): {e}. Retrying in {delay}s...")
+            time.sleep(delay)
+            delay *= 2.0
 
 
-# --- Backward Compatible API for main.py Scaffolding ---
+# --- Backward Compatible API for main.py ---
 
 def get_db_connection() -> psycopg2.extensions.connection:
     """
-    Alias of connect() for compatibility with scaffolded entrypoints.
+    Alias of connect() for compatibility.
     """
     return connect()
 
@@ -198,37 +282,44 @@ def fetch_existing_urls() -> Set[str]:
     Retrieves all unique article URLs currently stored in the database.
     """
     urls = set()
-    try:
-        with connect() as conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT url FROM articles;")
-                rows = cur.fetchall()
-                for row in rows:
-                    urls.add(row[0])
-    except Exception as e:
-        print(f"Warning: Failed to fetch existing URLs from database: {e}")
+    sql = "SELECT url FROM articles;"
+    max_retries = 3
+    delay = 1.0
+    
+    for attempt in range(1, max_retries + 1):
+        try:
+            with connect() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(sql)
+                    rows = cur.fetchall()
+                    for row in rows:
+                        urls.add(row[0])
+            return urls
+        except Exception as e:
+            if attempt == max_retries:
+                print(f"Warning: Final attempt failed to fetch existing URLs from database: {e}")
+                return urls
+            print(f"Warning: Attempt {attempt} failed to fetch existing URLs: {e}. Retrying in {delay}s...")
+            time.sleep(delay)
+            delay *= 2.0
     return urls
 
 def save_articles(articles: List[Dict[str, Any]]) -> None:
     """
-    Helper function to save list of articles.
+    Saves a batch of articles (for backward compatibility).
     """
-    print(f"Database: Inserting batch of {len(articles)} articles.")
     for art in articles:
         try:
-            if not article_exists(art["url"]):
-                insert_article(art)
+            insert_article(art, overwrite=False)
         except Exception as e:
-            print(f"Warning: Failed to insert article {art['url']}: {e}")
+            print(f"Warning: Failed to save article {art.get('url')}: {e}")
 
 def save_clusters(clusters: List[Dict[str, Any]]) -> None:
     """
-    Helper function to insert/associate clusters (scaffold placeholder logic).
+    Saves a batch of clusters (for backward compatibility).
     """
-    print(f"Database: Saving {len(clusters)} clusters.")
-    # In scaffolding phase, just insert a dummy cluster to database
     for c in clusters:
         try:
             insert_cluster(c["label"])
         except Exception as e:
-            print(f"Warning: Failed to insert cluster {c['label']}: {e}")
+            print(f"Warning: Failed to save cluster {c['label']}: {e}")

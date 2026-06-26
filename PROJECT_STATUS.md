@@ -8,10 +8,9 @@
 - [x] Git repository initialized
 - [x] Initial commit completed
 - [x] Database implementation
+- [x] RSS Ingestion & Article Extraction
 
 Pending:
-- RSS ingestion
-- Article extraction
 - Clustering
 - REST API implementation
 - Timeline UI
