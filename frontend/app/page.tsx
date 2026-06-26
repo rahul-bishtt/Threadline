@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Activity, AlertCircle, FileText, LayoutGrid, Award, Clock, Terminal, Search } from 'lucide-react';
 import Timeline from '@/components/Timeline';
 import ClusterDetail from '@/components/ClusterDetail';
@@ -40,6 +40,11 @@ export default function Home() {
     },
   ]);
 
+  const timelineDataRef = useRef<TimelineData[]>([]);
+  useEffect(() => {
+    timelineDataRef.current = timelineData;
+  }, [timelineData]);
+
   /**
    * background=true → preserve existing data on screen until fetch completes (used by Refresh).
    * background=false → show skeleton on initial mount only.
@@ -53,8 +58,9 @@ export default function Home() {
       setLastSyncTime(new Date().toLocaleTimeString());
 
       // Compare timeline changes if background update (refresh)
-      if (background && timelineData.length > 0) {
-        const oldMap = new Map(timelineData.map((t) => [t.id, t.articleCount]));
+      const prevData = timelineDataRef.current;
+      if (background && prevData.length > 0) {
+        const oldMap = new Map(prevData.map((t) => [t.id, t.articleCount]));
         let newArticles = 0;
         let newClusters = 0;
         let updatedClusters = 0;
@@ -125,7 +131,7 @@ export default function Home() {
     } finally {
       if (!background) setLoading(false);
     }
-  }, [timelineData]);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
