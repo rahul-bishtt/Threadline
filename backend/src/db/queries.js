@@ -177,7 +177,8 @@ async function getAllClusters(client) {
     SELECT c.id, c.label, c.created_at AS "createdAt", c.updated_at AS "updatedAt",
            COUNT(a.id)::int AS "articleCount",
            MIN(a.published_at) AS "startTime",
-           MAX(a.published_at) AS "endTime"
+           MAX(a.published_at) AS "endTime",
+           ARRAY_AGG(DISTINCT a.source) FILTER (WHERE a.source IS NOT NULL) AS "sources"
     FROM clusters c
     LEFT JOIN articles a ON c.id = a.cluster_id
     GROUP BY c.id, c.label, c.created_at, c.updated_at

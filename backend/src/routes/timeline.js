@@ -33,6 +33,7 @@ router.get('/', async (req, res, next) => {
         endTime: c.endTime,
         articleCount: c.articleCount,
         intensity,
+        sources: c.sources || [],
       };
     });
 
