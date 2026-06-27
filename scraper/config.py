@@ -30,3 +30,8 @@ DEFAULT_FEEDS = [
 CLUSTER_THRESHOLD = int(os.getenv("CLUSTER_THRESHOLD", "4"))
 SIMILARITY_THRESHOLD = float(os.getenv("SIMILARITY_THRESHOLD", "0.3"))
 MAX_FEATURES = int(os.getenv("MAX_FEATURES", "5000"))
+
+# Proper Noun (PN) soft constraint parameters
+PN_BOOST_FACTOR = float(os.getenv("PN_BOOST_FACTOR", "1.5"))
+PN_PENALTY_FACTOR = float(os.getenv("PN_PENALTY_FACTOR", "0.4"))
+PN_DISTINCTIVE_IDF_THRESHOLD = float(os.getenv("PN_DISTINCTIVE_IDF_THRESHOLD", "2.20"))

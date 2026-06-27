@@ -3,7 +3,7 @@ import math
 from collections import Counter, defaultdict
 from typing import List, Dict, Any, Set
 from nltk.stem import PorterStemmer
-from config import CLUSTER_THRESHOLD
+from config import CLUSTER_THRESHOLD, PN_BOOST_FACTOR, PN_PENALTY_FACTOR, PN_DISTINCTIVE_IDF_THRESHOLD
 from db import (
     transaction,
     get_existing_clusters,
@@ -219,7 +219,22 @@ def compute_pairwise_similarity(art1: Dict[str, Any], art2: Dict[str, Any], idf:
         return 0.0
         
     # Scale to fit CLUSTER_THRESHOLD scale (0 - 10)
-    return (overlap_sum / max_sum) * 80.0
+    score = (overlap_sum / max_sum) * 80.0
+
+    # Proper Noun Soft Co-Occurrence Constraint
+    pn1 = {w for w in state1["tokens"] if w.startswith("PN_")}
+    pn2 = {w for w in state2["tokens"] if w.startswith("PN_")}
+    
+    distinctive_pn1 = {w for w in pn1 if idf.get(w, 4.0) >= PN_DISTINCTIVE_IDF_THRESHOLD}
+    distinctive_pn2 = {w for w in pn2 if idf.get(w, 4.0) >= PN_DISTINCTIVE_IDF_THRESHOLD}
+    
+    shared_distinctive = distinctive_pn1 & distinctive_pn2
+    if shared_distinctive:
+        score *= PN_BOOST_FACTOR
+    else:
+        score *= PN_PENALTY_FACTOR
+
+    return score
 
 def get_representative_keywords(member_articles: List[Dict[str, Any]], limit: int = 20, idf: Dict[str, float] = None) -> List[str]:
     """
