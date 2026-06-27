@@ -29,15 +29,32 @@ export default function Home() {
   // KPI states
   const [topSource, setTopSource] = useState('BBC');
   const [topSourceCount, setTopSourceCount] = useState(0);
-  const [lastSyncTime, setLastSyncTime] = useState<string>('--:--:--');
   const [liveTime, setLiveTime] = useState<string>('--:--:--');
+
+  const [newClustersCount, setNewClustersCount] = useState<number>(0);
+  const [newArticlesCount, setNewArticlesCount] = useState<number>(0);
+  const [secondsSinceSync, setSecondsSinceSync] = useState<number | null>(null);
+  const [topicsToday, setTopicsToday] = useState<number>(0);
+  const [articlesToday, setArticlesToday] = useState<number>(0);
+
+  const lastSyncTimestampRef = useRef<number | null>(null);
+
+  const updateSyncTimestamp = useCallback((time: number) => {
+    lastSyncTimestampRef.current = time;
+    setSecondsSinceSync(0);
+  }, []);
 
   // Activity log states
   const [activities, setActivities] = useState<ActivityEvent[]>([]);
 
   useEffect(() => {
     const updateTime = () => {
-      setLiveTime(new Date().toLocaleTimeString());
+      const now = new Date();
+      setLiveTime(now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }));
+      if (lastSyncTimestampRef.current) {
+        const elapsed = Math.floor((now.getTime() - lastSyncTimestampRef.current) / 1000);
+        setSecondsSinceSync(elapsed);
+      }
     };
     const delay = setTimeout(updateTime, 0);
     const timer = setInterval(updateTime, 1000);
@@ -83,7 +100,17 @@ export default function Home() {
     try {
       const data = await getTimeline();
       setTimelineData(data);
-      setLastSyncTime(new Date().toLocaleTimeString());
+      updateSyncTimestamp(Date.now());
+
+      const nowTime = Date.now();
+      const oneDayAgo = nowTime - 24 * 60 * 60 * 1000;
+      const todayTopics = data.filter((t) => new Date(t.startTime).getTime() >= oneDayAgo).length;
+      const todayArticles = data
+        .filter((t) => new Date(t.startTime).getTime() >= oneDayAgo)
+        .reduce((acc, t) => acc + t.articleCount, 0);
+
+      setTopicsToday(todayTopics);
+      setArticlesToday(todayArticles);
 
       // Compare timeline changes if background update (refresh)
       const prevData = timelineDataRef.current;
@@ -104,6 +131,9 @@ export default function Home() {
           }
         });
 
+        setNewClustersCount(newClusters);
+        setNewArticlesCount(newArticles);
+
         let msg = '';
         if (newArticles > 0 || newClusters > 0 || updatedClusters > 0) {
           msg = `Ingestion success: Fetched ${newArticles} articles. Created ${newClusters} new topics, updated ${updatedClusters} existing topics.`;
@@ -119,6 +149,9 @@ export default function Home() {
           },
           ...prev,
         ]);
+      } else if (!background) {
+        setNewClustersCount(0);
+        setNewArticlesCount(0);
       }
 
       // Calculate Top Source dynamically from the largest cluster
@@ -161,12 +194,16 @@ export default function Home() {
     }
   }, [
     setTimelineData,
-    setLastSyncTime,
     setActivities,
     setTopSource,
     setTopSourceCount,
     setError,
     setLoading,
+    updateSyncTimestamp,
+    setNewClustersCount,
+    setNewArticlesCount,
+    setTopicsToday,
+    setArticlesToday,
   ]);
 
   useEffect(() => {
@@ -230,6 +267,24 @@ export default function Home() {
   const totalTopics = timelineData.length;
   const totalArticles = timelineData.reduce((acc, t) => acc + t.articleCount, 0);
 
+  // Derived state values are calculated safely within the data loading lifecycle to maintain component purity
+
+  const topicsSubText =
+    newClustersCount > 0 ? `+${newClustersCount} this sync` : `+${topicsToday} today`;
+
+  const articlesSubText =
+    newArticlesCount > 0 ? `+${newArticlesCount} this sync` : `+${articlesToday} today`;
+
+  let lastUpdatedSubText = 'Live • Synced just now';
+  if (secondsSinceSync !== null) {
+    if (secondsSinceSync < 60) {
+      lastUpdatedSubText = `Live • Synced ${secondsSinceSync}s ago`;
+    } else {
+      const mins = Math.floor(secondsSinceSync / 60);
+      lastUpdatedSubText = `Live • Synced ${mins}m ago`;
+    }
+  }
+
   return (
     <main className="min-h-screen bg-background flex flex-col justify-between">
       <div>
@@ -289,72 +344,81 @@ export default function Home() {
           {/* KPI Dashboard Overview Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* Total Topics Card */}
-            <Card className="bg-[#18181B] border-[#27272A] rounded-xl hover:border-[#4F46E5]/50 transition-all duration-300 shadow-md">
-              <CardContent className="p-7 flex items-center justify-between">
-                <div className="space-y-1 min-w-0">
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
+            <Card className="bg-[#18181B] border-[#27272A] rounded-xl hover:border-[#4F46E5] hover:shadow-lg hover:shadow-[#4F46E5]/10 transform transition-all duration-200 hover:-translate-y-[2px] cursor-pointer shadow-md min-h-[160px] flex items-center">
+              <CardContent className="p-8 flex items-center justify-between w-full">
+                <div className="space-y-2 min-w-0">
+                  <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block">
                     Topics
                   </span>
-                  <div className="text-3xl font-extrabold tracking-tight text-[#FAFAFA]">{totalTopics}</div>
-                  <p className="text-[11px] text-muted-foreground truncate">Clustered event categories</p>
+                  <div className="text-4xl font-bold tracking-tight text-white leading-none">
+                    {totalTopics}
+                  </div>
+                  <p className="text-xs text-zinc-500 font-medium mt-1">
+                    {topicsSubText}
+                  </p>
                 </div>
-                <div className="w-12 h-12 rounded-xl bg-[#4F46E5]/10 flex items-center justify-center text-[#4F46E5] shrink-0 ml-3">
-                  <LayoutGrid size={24} />
+                <div className="w-16 h-16 rounded-full bg-[#4F46E5] flex items-center justify-center text-white shadow-lg shadow-[#4F46E5]/20 shrink-0 ml-4">
+                  <LayoutGrid size={28} />
                 </div>
               </CardContent>
             </Card>
 
             {/* Total Articles Card */}
-            <Card className="bg-[#18181B] border-[#27272A] rounded-xl hover:border-[#4F46E5]/50 transition-all duration-300 shadow-md">
-              <CardContent className="p-7 flex items-center justify-between">
-                <div className="space-y-1 min-w-0">
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
+            <Card className="bg-[#18181B] border-[#27272A] rounded-xl hover:border-[#4F46E5] hover:shadow-lg hover:shadow-[#4F46E5]/10 transform transition-all duration-200 hover:-translate-y-[2px] cursor-pointer shadow-md min-h-[160px] flex items-center">
+              <CardContent className="p-8 flex items-center justify-between w-full">
+                <div className="space-y-2 min-w-0">
+                  <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block">
                     Articles
                   </span>
-                  <div className="text-3xl font-extrabold tracking-tight text-[#FAFAFA]">{totalArticles}</div>
-                  <p className="text-[11px] text-muted-foreground truncate">Ingested RSS content</p>
+                  <div className="text-4xl font-bold tracking-tight text-white leading-none">
+                    {totalArticles}
+                  </div>
+                  <p className="text-xs text-zinc-500 font-medium mt-1">
+                    {articlesSubText}
+                  </p>
                 </div>
-                <div className="w-12 h-12 rounded-xl bg-[#4F46E5]/10 flex items-center justify-center text-[#4F46E5] shrink-0 ml-3">
-                  <FileText size={24} />
+                <div className="w-16 h-16 rounded-full bg-[#4F46E5] flex items-center justify-center text-white shadow-lg shadow-[#4F46E5]/20 shrink-0 ml-4">
+                  <FileText size={28} />
                 </div>
               </CardContent>
             </Card>
 
             {/* Top Source Card */}
-            <Card className="bg-[#18181B] border-[#27272A] rounded-xl hover:border-[#4F46E5]/50 transition-all duration-300 shadow-md">
-              <CardContent className="p-7 flex items-center justify-between">
-                <div className="space-y-1 min-w-0 flex-1">
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
+            <Card className="bg-[#18181B] border-[#27272A] rounded-xl hover:border-[#4F46E5] hover:shadow-lg hover:shadow-[#4F46E5]/10 transform transition-all duration-200 hover:-translate-y-[2px] cursor-pointer shadow-md min-h-[160px] flex items-center">
+              <CardContent className="p-8 flex items-center justify-between w-full">
+                <div className="space-y-2 min-w-0 flex-1">
+                  <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block">
                     Top Source
                   </span>
-                  <div className="text-3xl font-extrabold tracking-tight text-[#FAFAFA] truncate">{topSource}</div>
-                  <p className="text-[11px] text-muted-foreground truncate">
-                    {topSourceCount > 0 ? `${topSourceCount} articles in top topic` : 'Scraped feed volume'}
+                  <div className="text-4xl font-bold tracking-tight text-white leading-none truncate max-w-[180px]">
+                    {topSource}
+                  </div>
+                  <p className="text-xs text-zinc-500 font-medium mt-1 truncate">
+                    {topSourceCount > 0 ? `${topSourceCount} articles` : 'Scraped feed volume'}
                   </p>
                 </div>
-                <div className="w-12 h-12 rounded-xl bg-[#4F46E5]/10 flex items-center justify-center text-[#4F46E5] shrink-0 ml-3">
-                  <Award size={24} />
+                <div className="w-16 h-16 rounded-full bg-[#4F46E5] flex items-center justify-center text-white shadow-lg shadow-[#4F46E5]/20 shrink-0 ml-4">
+                  <Award size={28} />
                 </div>
               </CardContent>
             </Card>
 
             {/* Last Updated Card */}
-            <Card className="bg-[#18181B] border-[#27272A] rounded-xl hover:border-[#22C55E]/50 transition-all duration-300 shadow-md">
-              <CardContent className="p-7 flex items-center justify-between">
-                <div className="space-y-1 min-w-0">
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
+            <Card className="bg-[#18181B] border-[#27272A] rounded-xl hover:border-[#4F46E5] hover:shadow-lg hover:shadow-[#4F46E5]/10 transform transition-all duration-200 hover:-translate-y-[2px] cursor-pointer shadow-md min-h-[160px] flex items-center">
+              <CardContent className="p-8 flex items-center justify-between w-full">
+                <div className="space-y-2 min-w-0">
+                  <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block">
                     Last Updated
                   </span>
-                  <div className="text-3xl font-extrabold tracking-tight text-[#FAFAFA]">{liveTime}</div>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-pulse" />
-                    <span className="text-[11px] text-[#22C55E] font-medium">
-                      System Active • Sync: {lastSyncTime}
-                    </span>
+                  <div className="text-4xl font-bold tracking-tight text-white leading-none">
+                    {liveTime}
                   </div>
+                  <p className="text-xs text-zinc-500 font-medium mt-1">
+                    {lastUpdatedSubText}
+                  </p>
                 </div>
-                <div className="w-12 h-12 rounded-xl bg-[#22C55E]/10 flex items-center justify-center text-[#22C55E] shrink-0 ml-3">
-                  <Clock size={24} />
+                <div className="w-16 h-16 rounded-full bg-[#4F46E5] flex items-center justify-center text-white shadow-lg shadow-[#4F46E5]/20 shrink-0 ml-4">
+                  <Clock size={28} />
                 </div>
               </CardContent>
             </Card>
