@@ -3,7 +3,7 @@
 import React, { useRef, useEffect } from 'react';
 import { ExternalLink, Clock, Sparkles, ChevronLeft, ChevronRight, Filter, BookOpen, Calendar, BarChart2 } from 'lucide-react';
 import { ClusterDetail as ClusterDetailType, Article } from '@/lib/api';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';

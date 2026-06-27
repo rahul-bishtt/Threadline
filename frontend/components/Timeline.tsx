@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { CalendarDays, Sparkles, AlertCircle, Info } from 'lucide-react';
+import React, { useState, useMemo, useRef } from 'react';
+import { CalendarDays, AlertCircle, Info } from 'lucide-react';
 import { TimelineData } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -56,10 +56,10 @@ export const Timeline: React.FC<TimelineProps> = ({
   }, [sortedData, showAll]);
 
   // Calculate overall date boundaries for the entire dataset (for stable scaling)
-  const { domainMin, domainMax, domainSpan } = useMemo(() => {
+  const { domainMin, domainSpan } = useMemo(() => {
     if (data.length === 0) {
-      const now = Date.now();
-      return { domainMin: now - 24 * 60 * 60 * 1000, domainMax: now, domainSpan: 24 * 60 * 60 * 1000 };
+      const staticTime = 1770000000000; // static base timestamp for purity
+      return { domainMin: staticTime - 24 * 60 * 60 * 1000, domainSpan: 24 * 60 * 60 * 1000 };
     }
     const timestamps = data.flatMap((d) => [
       new Date(d.startTime).getTime(),
@@ -68,7 +68,7 @@ export const Timeline: React.FC<TimelineProps> = ({
     const min = Math.min(...timestamps);
     const max = Math.max(...timestamps);
     const span = Math.max(max - min, 60 * 60 * 1000); // min 1 hour span
-    return { domainMin: min, domainMax: max, domainSpan: span };
+    return { domainMin: min, domainSpan: span };
   }, [data]);
 
   // 4. Greedy Lane Packing to assign vertical tracks without collision
@@ -177,7 +177,7 @@ export const Timeline: React.FC<TimelineProps> = ({
   /* ── 1. Skeleton Loader ── */
   if (loading) {
     return (
-      <Card className="bg-[#18181B] border-[#27272A] shadow-lg">
+      <Card className="bg-[#18181B] border-[#27272A] rounded-xl shadow-lg">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <CalendarDays size={16} className="text-[#4F46E5] animate-pulse" />
@@ -208,7 +208,7 @@ export const Timeline: React.FC<TimelineProps> = ({
   /* ── 2. Empty State ── */
   if (data.length === 0) {
     return (
-      <Card className="bg-[#18181B] border-[#27272A] shadow-lg">
+      <Card className="bg-[#18181B] border-[#27272A] rounded-xl shadow-lg">
         <CardHeader>
           <div className="flex items-center gap-2">
             <CalendarDays size={16} className="text-[#4F46E5]" />
@@ -226,7 +226,7 @@ export const Timeline: React.FC<TimelineProps> = ({
   }
 
   return (
-    <Card id="timeline-container" ref={containerRef} className="bg-[#18181B] border-[#27272A] shadow-lg relative overflow-visible">
+    <Card id="timeline-container" ref={containerRef} className="bg-[#18181B] border-[#27272A] rounded-xl shadow-lg relative overflow-visible">
       {/* Absolute Tooltip Overlay */}
       {hoveredTopic && hoveredPosition && (
         <div

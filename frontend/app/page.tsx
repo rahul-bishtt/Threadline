@@ -7,7 +7,7 @@ import ClusterDetail, { ArticleList } from '@/components/ClusterDetail';
 import TrendingTopics from '@/components/TrendingTopics';
 import RefreshButton from '@/components/RefreshButton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { getTimeline, getClusterById, TimelineData, ClusterDetail as ClusterDetailType, Article } from '@/lib/api';
 
 interface ActivityEvent {
@@ -32,7 +32,13 @@ export default function Home() {
   const [lastSyncTime, setLastSyncTime] = useState<string>('Never');
 
   // Activity log states
-  const [activities, setActivities] = useState<ActivityEvent[]>([]);
+  const [activities, setActivities] = useState<ActivityEvent[]>(() => [
+    {
+      timestamp: typeof window !== 'undefined' ? new Date().toLocaleTimeString() : '12:00:00 AM',
+      message: 'System initialization completed. Dashboard online.',
+      type: 'info',
+    },
+  ]);
 
   // Lifted cluster detail states
   const [clusterDetail, setClusterDetail] = useState<ClusterDetailType | null>(null);
@@ -41,16 +47,6 @@ export default function Home() {
   const [clusterPage, setClusterPage] = useState(1);
   const [clusterArticles, setClusterArticles] = useState<Article[]>([]);
   const [availableSources, setAvailableSources] = useState<string[]>([]);
-
-  useEffect(() => {
-    setActivities([
-      {
-        timestamp: new Date().toLocaleTimeString(),
-        message: 'System initialization completed. Dashboard online.',
-        type: 'info',
-      },
-    ]);
-  }, []);
 
   const timelineDataRef = useRef<TimelineData[]>([]);
   useEffect(() => {
@@ -160,12 +156,7 @@ export default function Home() {
 
   // Load cluster detail when ID or Page changes
   useEffect(() => {
-    if (!selectedClusterId) {
-      setClusterDetail(null);
-      setClusterArticles([]);
-      setAvailableSources([]);
-      return;
-    }
+    if (!selectedClusterId) return;
 
     let isMounted = true;
     const loadDetail = async () => {
@@ -196,10 +187,15 @@ export default function Home() {
     };
   }, [selectedClusterId, clusterPage]);
 
-  const handleSelectCluster = (id: number) => {
+  const handleSelectCluster = (id: number | null) => {
     setSelectedClusterId(id);
     setSelectedSources([]);
     setClusterPage(1);
+    if (!id) {
+      setClusterDetail(null);
+      setClusterArticles([]);
+      setAvailableSources([]);
+    }
   };
 
   // Compute stats metrics
@@ -237,7 +233,7 @@ export default function Home() {
                   placeholder="Search news topics..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full h-8 pl-8 pr-3 text-xs bg-[#18181B] border border-[#27272A] rounded-md text-[#FAFAFA] placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-[#4F46E5] focus:border-[#4F46E5] transition-all"
+                  className="w-full h-8 pl-8 pr-3 text-xs bg-[#18181B] border border-[#27272A] rounded-lg text-[#FAFAFA] placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-[#4F46E5] focus:border-[#4F46E5] transition-all"
                 />
               </div>
 
@@ -259,7 +255,7 @@ export default function Home() {
           {/* KPI Dashboard Overview Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Total Topics Card */}
-            <Card className="bg-[#18181B] border-[#27272A] hover:border-[#4F46E5]/50 transition-all duration-300 shadow-md">
+            <Card className="bg-[#18181B] border-[#27272A] rounded-xl hover:border-[#4F46E5]/50 transition-all duration-300 shadow-md">
               <CardContent className="p-5 flex items-center justify-between">
                 <div className="space-y-1 min-w-0">
                   <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">
@@ -275,7 +271,7 @@ export default function Home() {
             </Card>
 
             {/* Total Articles Card */}
-            <Card className="bg-[#18181B] border-[#27272A] hover:border-[#4F46E5]/50 transition-all duration-300 shadow-md">
+            <Card className="bg-[#18181B] border-[#27272A] rounded-xl hover:border-[#4F46E5]/50 transition-all duration-300 shadow-md">
               <CardContent className="p-5 flex items-center justify-between">
                 <div className="space-y-1 min-w-0">
                   <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">
@@ -291,7 +287,7 @@ export default function Home() {
             </Card>
 
             {/* Top Source Card */}
-            <Card className="bg-[#18181B] border-[#27272A] hover:border-[#4F46E5]/50 transition-all duration-300 shadow-md">
+            <Card className="bg-[#18181B] border-[#27272A] rounded-xl hover:border-[#4F46E5]/50 transition-all duration-300 shadow-md">
               <CardContent className="p-5 flex items-center justify-between">
                 <div className="space-y-1 min-w-0 flex-1">
                   <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">
@@ -309,7 +305,7 @@ export default function Home() {
             </Card>
 
             {/* Last Updated Card */}
-            <Card className="bg-[#18181B] border-[#27272A] hover:border-[#22C55E]/50 transition-all duration-300 shadow-md">
+            <Card className="bg-[#18181B] border-[#27272A] rounded-xl hover:border-[#22C55E]/50 transition-all duration-300 shadow-md">
               <CardContent className="p-5 flex items-center justify-between">
                 <div className="space-y-1 min-w-0">
                   <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">
@@ -376,17 +372,17 @@ export default function Home() {
       </div>
 
       {/* Terminal-style Activity Log Footer */}
-      <footer className="border-t border-border bg-secondary/15 py-4 px-6 shrink-0 mt-6">
+      <footer className="border-t border-[#27272A] bg-[#09090B]/50 py-4 px-6 shrink-0 mt-6">
         <div className="max-w-screen-xl mx-auto flex flex-col gap-2">
-          <div className="flex items-center gap-1.5 text-muted-foreground text-xs font-semibold uppercase tracking-wider">
-            <Terminal size={12} className="text-primary" />
+          <div className="flex items-center gap-1.5 text-muted-foreground text-[10px] font-bold uppercase tracking-wider">
+            <Terminal size={12} className="text-[#4F46E5]" />
             Recent Scraper & Clustering Activity
           </div>
-          <div className="max-h-24 overflow-y-auto space-y-1 font-mono text-[11px] mt-1 bg-black/45 p-3 rounded border border-border">
+          <div className="max-h-24 overflow-y-auto space-y-1.5 font-mono text-[10px] mt-1 bg-black/40 p-3.5 rounded-lg border border-[#27272A]">
             {activities.map((act, index) => (
               <div key={index} className="flex gap-2">
                 <span className="text-muted-foreground select-none">[{act.timestamp}]</span>
-                <span className={act.type === 'success' ? 'text-green-400' : act.type === 'error' ? 'text-red-400' : 'text-zinc-300'}>
+                <span className={act.type === 'success' ? 'text-[#22C55E]' : act.type === 'error' ? 'text-red-400' : 'text-zinc-300'}>
                   {act.message}
                 </span>
               </div>

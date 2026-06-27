@@ -90,7 +90,7 @@ export const RefreshButton: React.FC<RefreshButtonProps> = ({ onComplete }) => {
     return (
       <Badge
         variant="outline"
-        className={`text-xs font-medium transition-all duration-200 ${styles[jobStatus]}`}
+        className={`text-[9px] font-bold tracking-wider uppercase px-2.5 py-0.5 rounded-md transition-all duration-200 ${styles[jobStatus]}`}
       >
         {statusMessage}
       </Badge>
@@ -104,7 +104,7 @@ export const RefreshButton: React.FC<RefreshButtonProps> = ({ onComplete }) => {
         size="sm"
         onClick={handleRefresh}
         disabled={isLoading}
-        className="h-8 gap-1.5 text-xs font-medium"
+        className="h-8 gap-1.5 text-xs font-semibold border-[#27272A] bg-[#18181B] hover:bg-[#27272A]/40 text-[#FAFAFA]/90 hover:text-[#FAFAFA] rounded-lg transition-all duration-200 cursor-pointer disabled:opacity-50"
       >
         <RefreshCw
           size={13}
