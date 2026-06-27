@@ -29,7 +29,20 @@ export default function Home() {
   // KPI states
   const [topSource, setTopSource] = useState('BBC');
   const [topSourceCount, setTopSourceCount] = useState(0);
-  const [lastSyncTime, setLastSyncTime] = useState<string>('Never');
+  const [lastSyncTime, setLastSyncTime] = useState<string>('--:--:--');
+  const [liveTime, setLiveTime] = useState<string>('--:--:--');
+
+  useEffect(() => {
+    const updateTime = () => {
+      setLiveTime(new Date().toLocaleTimeString());
+    };
+    const delay = setTimeout(updateTime, 0);
+    const timer = setInterval(updateTime, 1000);
+    return () => {
+      clearTimeout(delay);
+      clearInterval(timer);
+    };
+  }, []);
 
   // Activity log states
   const [activities, setActivities] = useState<ActivityEvent[]>(() => [
@@ -311,10 +324,12 @@ export default function Home() {
                   <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">
                     Last Updated
                   </span>
-                  <div className="text-2xl font-bold tracking-tight text-[#FAFAFA]">{lastSyncTime}</div>
+                  <div className="text-2xl font-bold tracking-tight text-[#FAFAFA]">{liveTime}</div>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-pulse" />
-                    <span className="text-[10px] text-[#22C55E] font-medium">System Active</span>
+                    <span className="text-[10px] text-[#22C55E] font-medium">
+                      System Active • Sync: {lastSyncTime}
+                    </span>
                   </div>
                 </div>
                 <div className="w-10 h-10 rounded-lg bg-[#22C55E]/10 flex items-center justify-center text-[#22C55E] shrink-0 ml-3">
