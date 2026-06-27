@@ -350,18 +350,18 @@ export default function Home() {
             >
               <CardContent className="p-8 flex items-center justify-between w-full">
                 <div className="space-y-2 min-w-0">
-                  <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block">
+                  <span className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider block">
                     Topics
                   </span>
-                  <div className="text-4xl font-bold tracking-tight text-white leading-none">
+                  <div className="text-5xl font-bold tracking-tight text-white leading-none">
                     {totalTopics}
                   </div>
-                  <p className="text-xs text-zinc-500 font-medium mt-1">
+                  <p className="text-xs text-zinc-500/80 font-normal mt-1">
                     {topicsSubText}
                   </p>
                 </div>
-                <div className="w-16 h-16 rounded-full bg-[#4F46E5] flex items-center justify-center text-white shadow-lg shadow-[#4F46E5]/20 shrink-0 ml-4">
-                  <LayoutGrid size={28} />
+                <div className="w-[54px] h-[54px] rounded-full bg-[#4F46E5] flex items-center justify-center text-white shadow-lg shadow-[#4F46E5]/20 shrink-0 ml-4">
+                  <LayoutGrid size={22} />
                 </div>
               </CardContent>
             </Card>
@@ -373,18 +373,18 @@ export default function Home() {
             >
               <CardContent className="p-8 flex items-center justify-between w-full">
                 <div className="space-y-2 min-w-0">
-                  <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block">
+                  <span className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider block">
                     Articles
                   </span>
-                  <div className="text-4xl font-bold tracking-tight text-white leading-none">
+                  <div className="text-5xl font-bold tracking-tight text-white leading-none">
                     {totalArticles}
                   </div>
-                  <p className="text-xs text-zinc-500 font-medium mt-1">
+                  <p className="text-xs text-zinc-500/80 font-normal mt-1">
                     {articlesSubText}
                   </p>
                 </div>
-                <div className="w-16 h-16 rounded-full bg-[#4F46E5] flex items-center justify-center text-white shadow-lg shadow-[#4F46E5]/20 shrink-0 ml-4">
-                  <FileText size={28} />
+                <div className="w-[54px] h-[54px] rounded-full bg-[#4F46E5] flex items-center justify-center text-white shadow-lg shadow-[#4F46E5]/20 shrink-0 ml-4">
+                  <FileText size={22} />
                 </div>
               </CardContent>
             </Card>
@@ -396,18 +396,18 @@ export default function Home() {
             >
               <CardContent className="p-8 flex items-center justify-between w-full">
                 <div className="space-y-2 min-w-0 flex-1">
-                  <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block">
+                  <span className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider block">
                     Top Source
                   </span>
-                  <div className="text-4xl font-bold tracking-tight text-white leading-none truncate max-w-[180px]">
+                  <div className="text-5xl font-bold tracking-tight text-white leading-none truncate max-w-[200px]">
                     {topSource}
                   </div>
-                  <p className="text-xs text-zinc-500 font-medium mt-1 truncate">
+                  <p className="text-xs text-zinc-500/80 font-normal mt-1 truncate">
                     {topSourceCount > 0 ? `${topSourceCount} articles` : 'Scraped feed volume'}
                   </p>
                 </div>
-                <div className="w-16 h-16 rounded-full bg-[#4F46E5] flex items-center justify-center text-white shadow-lg shadow-[#4F46E5]/20 shrink-0 ml-4">
-                  <Award size={28} />
+                <div className="w-[54px] h-[54px] rounded-full bg-[#4F46E5] flex items-center justify-center text-white shadow-lg shadow-[#4F46E5]/20 shrink-0 ml-4">
+                  <Award size={22} />
                 </div>
               </CardContent>
             </Card>
@@ -419,18 +419,18 @@ export default function Home() {
             >
               <CardContent className="p-8 flex items-center justify-between w-full">
                 <div className="space-y-2 min-w-0">
-                  <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block">
+                  <span className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider block">
                     Last Updated
                   </span>
-                  <div className="text-4xl font-bold tracking-tight text-white leading-none">
+                  <div className="text-5xl font-bold tracking-tight text-white leading-none">
                     {liveTime}
                   </div>
-                  <p className="text-xs text-zinc-500 font-medium mt-1">
+                  <p className="text-xs text-zinc-500/80 font-normal mt-1">
                     {lastUpdatedSubText}
                   </p>
                 </div>
-                <div className="w-16 h-16 rounded-full bg-[#4F46E5] flex items-center justify-center text-white shadow-lg shadow-[#4F46E5]/20 shrink-0 ml-4">
-                  <Clock size={28} />
+                <div className="w-[54px] h-[54px] rounded-full bg-[#4F46E5] flex items-center justify-center text-white shadow-lg shadow-[#4F46E5]/20 shrink-0 ml-4">
+                  <Clock size={22} />
                 </div>
               </CardContent>
             </Card>
