@@ -350,7 +350,7 @@ export const Timeline: React.FC<TimelineProps> = ({
 
     const isNearRight = nodeX > containerRect.width - 220;
     const isNearLeft = nodeX < 220;
-    const isNearTop = nodeY < 140;
+    const isNearTop = nodeY < 200; // Adjusted threshold to prevent vertical tooltip clipping
 
     let x = nodeX;
     let y = nodeY;
@@ -374,10 +374,10 @@ export const Timeline: React.FC<TimelineProps> = ({
       transform = 'translate(-50%, -100%)';
     }
 
-    // Follow the mouse on the X-axis if not on the edges
+    // Follow the mouse on the X-axis if not on the edges, avoiding boundary clipping
     if (clientX !== undefined && !isNearRight && !isNearLeft) {
       const mouseX = clientX - containerRect.left;
-      x = Math.max(120, Math.min(containerRect.width - 120, mouseX));
+      x = Math.max(168, Math.min(containerRect.width - 168, mouseX));
     }
 
     return { x, y, transform };
@@ -851,29 +851,48 @@ export const Timeline: React.FC<TimelineProps> = ({
                   />
 
                   {/* Text Label Backdrop Capsule (with smooth opacity fade) */}
-                  <g
-                    style={{
-                      opacity: isLabelVisible ? 1 : 0,
-                      transition: 'opacity 135ms ease-in-out',
-                      pointerEvents: 'none',
-                    }}
-                  >
-                    {/* Dynamic label text */}
-                    <text
-                      x={xMid}
-                      y={yVal - rVal - 12}
-                      textAnchor="middle"
-                      fill={isSelected ? '#FAFAFA' : isHovered ? '#A5B4FC' : '#E4E4E7'}
-                      className={`text-xs ${isSelected || isHovered ? 'font-bold' : 'font-medium'} tracking-wide`}
-                      style={{
-                        transform: isHovered ? 'translateY(-2px)' : 'translateY(0px)',
-                        transformOrigin: `${xMid}px ${yVal}px`,
-                        transition: 'transform 135ms ease-out, fill 135ms ease-out',
-                      }}
-                    >
-                      {topic.label.length > 20 ? `${topic.label.slice(0, 18)}...` : topic.label}
-                    </text>
-                  </g>
+                  {(() => {
+                    const labelText = topic.label.length > 20 ? `${topic.label.slice(0, 18)}...` : topic.label;
+                    const rectWidth = labelText.length * 6.5 + 12;
+                    return (
+                      <g
+                        style={{
+                          opacity: isLabelVisible ? 1 : 0,
+                          transition: 'opacity 135ms ease-in-out',
+                          pointerEvents: 'none',
+                        }}
+                      >
+                        {/* Backdrop pill rect to block underlying grid/connecting lines */}
+                        <rect
+                          x={xMid - rectWidth / 2}
+                          y={yVal - rVal - 24}
+                          width={rectWidth}
+                          height={16}
+                          rx={8}
+                          fill="#18181B"
+                          fillOpacity={0.88}
+                          stroke="#27272A"
+                          strokeOpacity={0.5}
+                          strokeWidth={0.5}
+                        />
+                        {/* Dynamic label text */}
+                        <text
+                          x={xMid}
+                          y={yVal - rVal - 11}
+                          textAnchor="middle"
+                          fill={isSelected ? '#FAFAFA' : isHovered ? '#A5B4FC' : '#E4E4E7'}
+                          className={`text-xs ${isSelected || isHovered ? 'font-bold' : 'font-medium'} tracking-wide`}
+                          style={{
+                            transform: isHovered ? 'translateY(-1px)' : 'translateY(0px)',
+                            transformOrigin: `${xMid}px ${yVal}px`,
+                            transition: 'transform 135ms ease-out, fill 135ms ease-out',
+                          }}
+                        >
+                          {labelText}
+                        </text>
+                      </g>
+                    );
+                  })()}
                 </g>
               );
             })}
