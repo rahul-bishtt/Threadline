@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useRef, useCallback } from 'react';
-import { CalendarDays, AlertCircle, Info } from 'lucide-react';
+import { CalendarDays, Info, WifiOff, Search, RotateCw, X } from 'lucide-react';
 import { TimelineData } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,6 +14,9 @@ interface TimelineProps {
   selectedClusterId: number | null;
   searchQuery: string;
   loading?: boolean;
+  error?: string | null;
+  onClearSearch?: () => void;
+  onRefresh?: () => void;
 }
 
 export const Timeline: React.FC<TimelineProps> = ({
@@ -22,6 +25,9 @@ export const Timeline: React.FC<TimelineProps> = ({
   selectedClusterId,
   searchQuery,
   loading = false,
+  error = null,
+  onClearSearch,
+  onRefresh,
 }) => {
   const [hoveredTopic, setHoveredTopic] = useState<TimelineData | null>(null);
   const [activeTooltip, setActiveTooltip] = useState<TimelineData | null>(null);
@@ -430,55 +436,253 @@ export const Timeline: React.FC<TimelineProps> = ({
   if (loading) {
     return (
       <Card className="bg-[#18181B] border-[#27272A] rounded-xl shadow-lg">
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-5">
+          <div>
+            <div className="flex items-center gap-2">
+              <CalendarDays size={20} className="text-[#4F46E5]" />
+              <CardTitle className="text-base font-bold tracking-tight text-[#FAFAFA]">News Evolution Timeline</CardTitle>
+              <Skeleton className="h-4 w-20 rounded-full ml-1" />
+            </div>
+            <Skeleton className="h-3 w-64 rounded mt-2" />
+          </div>
+          <Skeleton className="h-8 w-24 rounded-lg shrink-0" />
+        </CardHeader>
+
+        {/* SVG Placeholder — mirrors real timeline geometry */}
+        <CardContent className="pt-0 px-5 pb-5">
+          <svg
+            viewBox="0 0 1000 320"
+            width="100%"
+            height="320"
+            preserveAspectRatio="xMidYMid meet"
+          >
+            {/* Vertical grid lines */}
+            {[160, 295, 430, 565, 700, 860].map((x, i) => (
+              <line
+                key={`vg-${i}`}
+                x1={x} y1={50} x2={x} y2={270}
+                stroke="#27272A"
+                strokeWidth={1}
+                strokeDasharray="3 5"
+                opacity={0.5}
+              />
+            ))}
+
+            {/* Horizontal lane guides */}
+            {[90, 150, 210, 270].map((y, i) => (
+              <line
+                key={`hg-${i}`}
+                x1={70} y1={y} x2={930} y2={y}
+                stroke="#27272A"
+                strokeWidth={1}
+                strokeDasharray="2 6"
+                opacity={0.4}
+              />
+            ))}
+
+            {/* X-axis tick skeletons */}
+            {[160, 295, 430, 565, 700, 860].map((x, i) => (
+              <rect
+                key={`tick-${i}`}
+                x={x - 18} y={282} width={36} height={7}
+                rx={3}
+                fill="#3F3F46"
+                opacity={0.5}
+              >
+                <animate attributeName="opacity" values="0.5;0.8;0.5" dur="1.6s" begin={`${i * 0.15}s`} repeatCount="indefinite" />
+              </rect>
+            ))}
+
+            {/* Placeholder node tracks — duration lines */}
+            {[
+              { x1: 140, x2: 380, y: 90 },
+              { x1: 410, x2: 610, y: 90 },
+              { x1: 160, x2: 300, y: 150 },
+              { x1: 520, x2: 850, y: 150 },
+              { x1: 200, x2: 460, y: 210 },
+              { x1: 650, x2: 820, y: 210 },
+              { x1: 100, x2: 220, y: 270 },
+              { x1: 400, x2: 700, y: 270 },
+            ].map((seg, i) => (
+              <line
+                key={`seg-${i}`}
+                x1={seg.x1} y1={seg.y} x2={seg.x2} y2={seg.y}
+                stroke="#3F3F46"
+                strokeWidth={2}
+                strokeLinecap="round"
+                opacity={0.5}
+              />
+            ))}
+
+            {/* Shimmer placeholder circles */}
+            {[
+              { cx: 260, cy: 90,  r: 16 },
+              { cx: 510, cy: 90,  r: 11 },
+              { cx: 230, cy: 150, r: 8  },
+              { cx: 685, cy: 150, r: 20 },
+              { cx: 330, cy: 210, r: 13 },
+              { cx: 735, cy: 210, r: 9  },
+              { cx: 160, cy: 270, r: 7  },
+              { cx: 550, cy: 270, r: 15 },
+            ].map((node, i) => (
+              <circle
+                key={`node-${i}`}
+                cx={node.cx}
+                cy={node.cy}
+                r={node.r}
+                fill="#3F3F46"
+              >
+                <animate
+                  attributeName="opacity"
+                  values="0.4;0.75;0.4"
+                  dur="1.6s"
+                  begin={`${i * 0.18}s`}
+                  repeatCount="indefinite"
+                />
+              </circle>
+            ))}
+
+            {/* Fake label shimmer bars above selected nodes */}
+            {[
+              { x: 230, y: 68, w: 72 },
+              { x: 645, y: 124, w: 88 },
+              { x: 290, y: 191, w: 64 },
+            ].map((bar, i) => (
+              <rect
+                key={`label-${i}`}
+                x={bar.x} y={bar.y} width={bar.w} height={8}
+                rx={4}
+                fill="#3F3F46"
+                opacity={0.4}
+              >
+                <animate attributeName="opacity" values="0.4;0.7;0.4" dur="1.6s" begin={`${i * 0.25}s`} repeatCount="indefinite" />
+              </rect>
+            ))}
+          </svg>
+        </CardContent>
+
+        {/* Bottom guide bar skeleton */}
+        <div className="border-t border-[#27272A] px-5 py-3.5 flex items-center justify-between">
+          <Skeleton className="h-3 w-72 rounded" />
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-3 w-12 rounded" />
+            <Skeleton className="h-3 w-14 rounded" />
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  /* ── 2. Error / Offline State ── */
+  if (error) {
+    return (
+      <Card className="bg-[#18181B] border-[#27272A] rounded-xl shadow-lg animate-fade-in">
+        <CardHeader className="p-5 pb-3">
           <div className="flex items-center gap-2">
-            <CalendarDays size={16} className="text-[#4F46E5] animate-pulse" />
+            <WifiOff size={18} className="text-[#EF4444]" />
             <CardTitle className="text-sm font-semibold tracking-tight text-[#FAFAFA]">Timeline Constellation</CardTitle>
           </div>
-          <CardDescription>Loading topic evolution grid...</CardDescription>
         </CardHeader>
-        <CardContent className="h-[300px] flex flex-col justify-center items-center gap-4">
-          <div className="w-full max-w-lg space-y-4">
-            <Skeleton className="h-4 w-1/4 rounded bg-zinc-800" />
-            <div className="relative h-24 border border-dashed border-zinc-800 rounded flex items-center justify-around px-4">
-              <Skeleton className="h-6 w-6 rounded-full bg-zinc-800" />
-              <Skeleton className="h-8 w-8 rounded-full bg-zinc-800" />
-              <Skeleton className="h-5 w-5 rounded-full bg-zinc-800" />
-              <Skeleton className="h-10 w-10 rounded-full bg-zinc-800" />
-            </div>
-            <div className="flex justify-between">
-              <Skeleton className="h-3 w-10 bg-zinc-800" />
-              <Skeleton className="h-3 w-10 bg-zinc-800" />
-              <Skeleton className="h-3 w-10 bg-zinc-800" />
-            </div>
+        <CardContent className="flex flex-col items-center justify-center py-16 px-6 text-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-[#EF4444]/10 border border-[#EF4444]/20 flex items-center justify-center text-[#EF4444]">
+            <WifiOff size={22} />
           </div>
+          <div className="space-y-1">
+            <h3 className="text-base font-bold text-[#FAFAFA]">API Connection Failed</h3>
+            <p className="text-xs md:text-sm text-muted-foreground max-w-md">
+              Unable to reach the News Pulse backend. Make sure the scraper/API server is running on port 4000.
+            </p>
+          </div>
+          {onRefresh && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onRefresh}
+              className="mt-2 h-8 px-4 text-xs font-semibold border-[#27272A] hover:bg-[#27272A] hover:text-[#FAFAFA] rounded-lg flex items-center gap-1.5 cursor-pointer"
+            >
+              <RotateCw size={13} />
+              Retry Connection
+            </Button>
+          )}
         </CardContent>
       </Card>
     );
   }
 
-  /* ── 2. Empty State ── */
+  /* ── 3. Empty Data State ── */
   if (data.length === 0) {
     return (
-      <Card className="bg-[#18181B] border-[#27272A] rounded-xl shadow-lg">
-        <CardHeader>
+      <Card className="bg-[#18181B] border-[#27272A] rounded-xl shadow-lg animate-fade-in">
+        <CardHeader className="p-5 pb-3">
           <div className="flex items-center gap-2">
-            <CalendarDays size={16} className="text-[#4F46E5]" />
+            <CalendarDays size={18} className="text-[#4F46E5]" />
             <CardTitle className="text-sm font-semibold tracking-tight text-[#FAFAFA]">Timeline Constellation</CardTitle>
           </div>
         </CardHeader>
-        <CardContent className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
-          <AlertCircle size={36} className="text-zinc-600" />
-          <p className="text-sm text-center">
-            No active news timeline data. Click <span className="text-[#FAFAFA] font-medium">Refresh</span> to fetch.
-          </p>
+        <CardContent className="flex flex-col items-center justify-center py-16 px-6 text-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-[#4F46E5]/10 border border-[#4F46E5]/20 flex items-center justify-center text-[#4F46E5]">
+            <CalendarDays size={22} />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-base font-bold text-[#FAFAFA]">No active news timeline data</h3>
+            <p className="text-xs md:text-sm text-muted-foreground max-w-md">
+              There are no news clusters ingested in the system yet. Click below to fetch active feed data.
+            </p>
+          </div>
+          {onRefresh && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onRefresh}
+              className="mt-2 h-8 px-4 text-xs font-semibold border-[#27272A] hover:bg-[#27272A] hover:text-[#FAFAFA] rounded-lg flex items-center gap-1.5 cursor-pointer"
+            >
+              <RotateCw size={13} />
+              Sync Feeds Now
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  /* ── 4. Empty Search Results State ── */
+  if (filteredData.length === 0) {
+    return (
+      <Card className="bg-[#18181B] border-[#27272A] rounded-xl shadow-lg animate-fade-in">
+        <CardHeader className="p-5 pb-3">
+          <div className="flex items-center gap-2">
+            <CalendarDays size={18} className="text-[#4F46E5]" />
+            <CardTitle className="text-sm font-semibold tracking-tight text-[#FAFAFA]">Timeline Constellation</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center justify-center py-16 px-6 text-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-zinc-800/50 border border-zinc-700/30 flex items-center justify-center text-zinc-400">
+            <Search size={22} />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-base font-bold text-[#FAFAFA]">No matching constellation topics</h3>
+            <p className="text-xs md:text-sm text-muted-foreground max-w-md">
+              No news clusters match your search query: <span className="text-[#FAFAFA] font-mono bg-zinc-800 px-1.5 py-0.5 rounded text-xs">&quot;{searchQuery}&quot;</span>.
+            </p>
+          </div>
+          {onClearSearch && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onClearSearch}
+              className="mt-2 h-8 px-4 text-xs font-semibold border-[#27272A] hover:bg-[#27272A] hover:text-[#FAFAFA] rounded-lg flex items-center gap-1.5 cursor-pointer"
+            >
+              <X size={13} />
+              Clear Search Query
+            </Button>
+          )}
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card id="timeline-container" ref={containerRef} className="bg-[#18181B] border-[#27272A] rounded-xl shadow-lg relative overflow-visible">
+    <Card id="timeline-container" ref={containerRef} className="bg-[#18181B] border-[#27272A] rounded-xl shadow-lg relative overflow-visible animate-fade-in">
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes hoverPulse {
           0% {

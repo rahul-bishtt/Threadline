@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useEffect } from 'react';
-import { ExternalLink, Clock, Sparkles, ChevronLeft, ChevronRight, Filter, BookOpen, Calendar, BarChart2 } from 'lucide-react';
+import { ExternalLink, Clock, Sparkles, ChevronLeft, ChevronRight, Filter, BookOpen, Calendar, BarChart2, AlertCircle, RotateCw, X } from 'lucide-react';
 import { ClusterDetail as ClusterDetailType, Article } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -18,16 +18,17 @@ interface ClusterDetailProps {
   selectedSources: string[];
   onChangeSources: (sources: string[]) => void;
   availableSources: string[];
+  onRetry?: () => void;
 }
 
 function ArticleCardSkeleton() {
   return (
     <div className="space-y-3.5 p-5 rounded-xl border border-[#27272A] bg-[#18181B]">
       <div className="flex items-center gap-2">
-        <Skeleton className="h-4.5 w-14 rounded bg-zinc-800" />
+        <Skeleton className="h-4 w-14 rounded bg-zinc-800" />
         <Skeleton className="h-3 w-24 rounded bg-zinc-800" />
       </div>
-      <Skeleton className="h-4.5 w-full rounded bg-zinc-800" />
+      <Skeleton className="h-5 w-full rounded bg-zinc-800" />
       <Skeleton className="h-3.5 w-full rounded bg-zinc-800" />
       <Skeleton className="h-3.5 w-4/5 rounded bg-zinc-800" />
     </div>
@@ -42,6 +43,7 @@ export const ClusterDetail: React.FC<ClusterDetailProps> = ({
   selectedSources,
   onChangeSources,
   availableSources,
+  onRetry,
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -78,12 +80,12 @@ export const ClusterDetail: React.FC<ClusterDetailProps> = ({
     return `This news cluster emerged on ${dateStr}, compiling ${detail.articleCount} reports tracked across ${sourcesStr}. The cluster represents a focused narrative thread from multiple publishers.`;
   }, [detail, availableSources]);
 
-  // No Selection Empty State (matches h-[480px] of Trending Topics)
+  // No Selection Empty State (matches h-[540px] of Trending Topics)
   if (!clusterId) {
     return (
-      <Card className="h-[540px] flex flex-col justify-center items-center border-dashed border border-[#27272A] p-10 bg-[#18181B]/20 rounded-xl">
+      <Card className="h-[540px] flex flex-col justify-center items-center border-dashed border border-[#27272A] p-10 bg-[#18181B]/20 rounded-xl animate-fade-in">
         <div className="flex flex-col items-center max-w-[340px] text-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-[#4F46E5]/10 flex items-center justify-center text-[#4F46E5] animate-pulse">
+          <div className="w-12 h-12 rounded-full bg-[#4F46E5]/10 border border-[#4F46E5]/20 flex items-center justify-center text-[#4F46E5]">
             <Sparkles size={22} />
           </div>
           <h3 className="text-base font-bold tracking-tight text-[#FAFAFA]">Select a News Topic</h3>
@@ -95,7 +97,7 @@ export const ClusterDetail: React.FC<ClusterDetailProps> = ({
     );
   }
 
-  // Loading skeleton state (matches h-[480px])
+  // Loading skeleton state (matches h-[540px])
   if (loading && !detail) {
     return (
       <Card className="h-[540px] flex flex-col border-[#27272A] p-7 bg-[#18181B] rounded-xl justify-between">
@@ -122,8 +124,29 @@ export const ClusterDetail: React.FC<ClusterDetailProps> = ({
 
   if (error) {
     return (
-      <Card className="h-[480px] flex flex-col justify-center items-center border-[#27272A] bg-[#18181B] rounded-xl">
-        <p className="text-xs text-destructive">{error}</p>
+      <Card className="h-[540px] flex flex-col justify-center items-center border-[#27272A] bg-[#18181B] rounded-xl p-10 animate-fade-in">
+        <div className="flex flex-col items-center max-w-[340px] text-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-[#EF4444]/10 border border-[#EF4444]/20 flex items-center justify-center text-[#EF4444]">
+            <AlertCircle size={22} />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-base font-bold text-[#FAFAFA]">Failed to load details</h3>
+            <p className="text-xs md:text-sm text-muted-foreground leading-relaxed">
+              {error}
+            </p>
+          </div>
+          {onRetry && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onRetry}
+              className="mt-2 h-8 px-4 text-xs font-semibold border-[#27272A] hover:bg-[#27272A] hover:text-[#FAFAFA] rounded-lg flex items-center gap-1.5 cursor-pointer"
+            >
+              <RotateCw size={13} />
+              Retry Load
+            </Button>
+          )}
+        </div>
       </Card>
     );
   }
@@ -284,6 +307,7 @@ interface ArticleListProps {
   error: string | null;
   page: number;
   onPageChange: (page: number) => void;
+  onClearFilters?: () => void;
 }
 
 export const ArticleList: React.FC<ArticleListProps> = ({
@@ -294,6 +318,7 @@ export const ArticleList: React.FC<ArticleListProps> = ({
   error,
   page,
   onPageChange,
+  onClearFilters,
 }) => {
   if (!clusterId) {
     return null; // Don't show article list if no cluster selected
@@ -303,7 +328,7 @@ export const ArticleList: React.FC<ArticleListProps> = ({
     return (
       <Card className="border-[#27272A] bg-[#18181B] rounded-xl shadow-lg">
         <CardHeader className="p-5 pb-3 flex flex-row items-center gap-2">
-          <BookOpen size={16} className="text-[#4F46E5]" />
+          <BookOpen size={20} className="text-[#4F46E5]" />
           <CardTitle className="text-sm font-bold tracking-tight text-[#FAFAFA]">Article List</CardTitle>
         </CardHeader>
         <div className="border-t border-[#27272A]" />
@@ -318,14 +343,22 @@ export const ArticleList: React.FC<ArticleListProps> = ({
 
   if (error) {
     return (
-      <Card className="border-[#27272A] p-8 flex items-center justify-center bg-[#18181B] rounded-xl">
-        <p className="text-xs text-destructive">{error}</p>
+      <Card className="border-[#27272A] p-10 flex flex-col items-center justify-center bg-[#18181B] rounded-xl gap-4 animate-fade-in">
+        <div className="w-12 h-12 rounded-full bg-[#EF4444]/10 border border-[#EF4444]/20 flex items-center justify-center text-[#EF4444]">
+          <AlertCircle size={22} />
+        </div>
+        <div className="space-y-1 text-center">
+          <h3 className="text-base font-bold text-[#FAFAFA]">Failed to load articles</h3>
+          <p className="text-xs md:text-sm text-muted-foreground leading-relaxed">
+            {error}
+          </p>
+        </div>
       </Card>
     );
   }
 
   return (
-    <Card className="flex flex-col border-[#27272A] bg-[#18181B] rounded-xl shadow-lg">
+    <Card className="flex flex-col border-[#27272A] bg-[#18181B] rounded-xl shadow-lg animate-fade-in">
       <CardHeader className="p-5 pb-3 flex flex-row items-center justify-between">
         <div className="flex items-center gap-2">
           <BookOpen size={20} className="text-[#4F46E5]" />
@@ -341,9 +374,27 @@ export const ArticleList: React.FC<ArticleListProps> = ({
       {/* Articles List - Grid layout inside the Card */}
       <CardContent className="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
         {filteredArticles.length === 0 ? (
-          <div className="col-span-full py-16 text-center text-xs text-muted-foreground flex flex-col items-center justify-center gap-2">
-            <Filter size={24} className="text-zinc-600" strokeWidth={1.5} />
-            <p>No articles match the selected source filters.</p>
+          <div className="col-span-full py-16 text-center text-xs text-muted-foreground flex flex-col items-center justify-center gap-4 animate-fade-in">
+            <div className="w-10 h-10 rounded-full bg-zinc-800/50 border border-zinc-700/30 flex items-center justify-center text-zinc-400">
+              <Filter size={18} />
+            </div>
+            <div className="space-y-1">
+              <p className="font-semibold text-sm text-[#FAFAFA]">No articles match your filters</p>
+              <p className="text-xs text-muted-foreground max-w-xs mx-auto leading-relaxed">
+                All articles under this topic are currently filtered out by the active publisher selection.
+              </p>
+            </div>
+            {onClearFilters && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onClearFilters}
+                className="h-8 px-4 text-xs font-semibold border-[#27272A] hover:bg-[#27272A] hover:text-[#FAFAFA] rounded-lg flex items-center gap-1.5 cursor-pointer"
+              >
+                <X size={13} />
+                Clear Publisher Filters
+              </Button>
+            )}
           </div>
         ) : (
           filteredArticles.map((article) => (
@@ -382,9 +433,9 @@ export const ArticleList: React.FC<ArticleListProps> = ({
 
 function ArticleCard({ article }: { article: Article }) {
   return (
-    <div className="group rounded-xl border border-[#27272A] bg-[#18181B] p-6 hover:border-[#4F46E5]/40 hover:-translate-y-0.5 hover:shadow-md hover:shadow-[#4F46E5]/5 transition-all duration-200 flex flex-col justify-between hover:bg-[#27272A]/10">
+    <div className="group rounded-xl border border-[#27272A]/80 bg-[#18181B] p-5 hover:border-[#4F46E5]/40 hover:-translate-y-0.5 hover:shadow-md hover:shadow-[#4F46E5]/5 transition-all duration-200 flex flex-col justify-between hover:bg-[#27272A]/20">
       <div>
-        <div className="flex items-start justify-between gap-3 mb-4.5">
+        <div className="flex items-start justify-between gap-3 mb-4">
           <div className="flex items-center gap-2 flex-wrap">
             <Badge className="bg-[#27272A] text-zinc-300 hover:bg-[#27272A] border border-[#27272A]/50 text-[10px] font-semibold px-2 py-0.5 tracking-wider uppercase rounded-md">
               {article.source}
@@ -399,15 +450,15 @@ function ArticleCard({ article }: { article: Article }) {
               }).format(new Date(article.publishedAt))}
             </span>
           </div>
-          
+
           <a
             href={article.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-9 h-9 rounded-full bg-[#27272A]/40 flex items-center justify-center text-muted-foreground hover:text-[#FAFAFA] hover:bg-[#4F46E5]/20 hover:border-[#4F46E5]/40 border border-transparent transition-all shrink-0"
+            className="w-9 h-9 rounded-full bg-[#27272A]/40 flex items-center justify-center text-muted-foreground hover:text-[#FAFAFA] hover:bg-[#4F46E5]/20 border border-[#27272A]/30 hover:border-[#4F46E5]/40 transition-all shrink-0"
             aria-label="Open article link"
           >
-            <ExternalLink size={18} />
+            <ExternalLink size={15} />
           </a>
         </div>
         <a

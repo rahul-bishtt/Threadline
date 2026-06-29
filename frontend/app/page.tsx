@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Activity, AlertCircle, FileText, LayoutGrid, Award, Clock, Terminal, Search } from 'lucide-react';
+import { Activity, AlertCircle, FileText, LayoutGrid, Award, Clock, Terminal, Search, X } from 'lucide-react';
 import Timeline from '@/components/Timeline';
 import ClusterDetail, { ArticleList } from '@/components/ClusterDetail';
 import TrendingTopics from '@/components/TrendingTopics';
 import RefreshButton from '@/components/RefreshButton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { getTimeline, getClusterById, TimelineData, ClusterDetail as ClusterDetailType, Article } from '@/lib/api';
 
 interface ActivityEvent {
@@ -252,6 +253,23 @@ export default function Home() {
     };
   }, [selectedClusterId, clusterPage]);
 
+  const handleRetryCluster = useCallback(async () => {
+    if (!selectedClusterId) return;
+    setClusterLoading(true);
+    setClusterError(null);
+    try {
+      const data = await getClusterById(selectedClusterId, clusterPage, 20);
+      setClusterDetail(data);
+      setClusterArticles(data.articles);
+      const sources = [...new Set(data.articles.map((a) => a.source))];
+      setAvailableSources(sources);
+    } catch {
+      setClusterError('Failed to load topic details.');
+    } finally {
+      setClusterLoading(false);
+    }
+  }, [selectedClusterId, clusterPage]);
+
   const handleSelectCluster = (id: number | null) => {
     setSelectedClusterId(id);
     setSelectedSources([]);
@@ -294,7 +312,7 @@ export default function Home() {
             <div className="space-y-1">
               <div className="flex items-center gap-3.5">
                 <div className="w-11 h-11 rounded-xl bg-[#4F46E5] flex items-center justify-center text-white shadow-lg shadow-[#4F46E5]/20 shrink-0">
-                  <Activity size={27} className="animate-pulse text-[#FAFAFA]" />
+                  <Activity size={24} className="text-[#FAFAFA]" />
                 </div>
                 <div className="flex flex-col">
                   <h1 className="text-xl font-bold tracking-tight text-[#FAFAFA] leading-tight">
@@ -307,17 +325,26 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 md:gap-7 w-full md:w-auto">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 w-full md:w-auto">
               {/* Topic Search Input */}
               <div className="relative w-full md:w-[360px]">
-                <Search className="absolute left-3.5 top-[14px] h-4 w-4 text-muted-foreground" />
+                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                 <input
                   type="text"
                   placeholder="Search topics, sources..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full h-11 pl-11 pr-4 text-xs md:text-sm bg-[#18181B] border border-[#27272A] rounded-xl text-[#FAFAFA] placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-[#4F46E5] focus:border-[#4F46E5] transition-all"
+                  className="w-full h-11 pl-11 pr-10 text-xs md:text-sm bg-[#18181B] border border-[#27272A] rounded-xl text-[#FAFAFA] placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-[#4F46E5] focus:border-[#4F46E5] transition-all"
                 />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-[#FAFAFA] cursor-pointer transition-colors p-1"
+                    aria-label="Clear search"
+                  >
+                    <X size={15} />
+                  </button>
+                )}
               </div>
 
               {/* Pulsing Live Status Indicator */}
@@ -353,12 +380,17 @@ export default function Home() {
                   <span className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider block">
                     Topics
                   </span>
-                  <div className="text-5xl font-bold tracking-tight text-white leading-none">
-                    {totalTopics}
-                  </div>
-                  <p className="text-xs text-zinc-500/80 font-normal mt-1">
-                    {topicsSubText}
-                  </p>
+                  {loading ? (
+                    <>
+                      <Skeleton className="h-10 w-16 rounded-lg" />
+                      <Skeleton className="h-3 w-20 rounded mt-1" />
+                    </>
+                  ) : (
+                    <div className="animate-fade-in">
+                      <div className="text-5xl font-bold tracking-tight text-white leading-none">{totalTopics}</div>
+                      <p className="text-xs text-zinc-500/80 font-normal mt-1">{topicsSubText}</p>
+                    </div>
+                  )}
                 </div>
                 <div className="w-[54px] h-[54px] rounded-full bg-[#4F46E5] flex items-center justify-center text-white shadow-lg shadow-[#4F46E5]/20 shrink-0 ml-4">
                   <LayoutGrid size={22} />
@@ -376,12 +408,17 @@ export default function Home() {
                   <span className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider block">
                     Articles
                   </span>
-                  <div className="text-5xl font-bold tracking-tight text-white leading-none">
-                    {totalArticles}
-                  </div>
-                  <p className="text-xs text-zinc-500/80 font-normal mt-1">
-                    {articlesSubText}
-                  </p>
+                  {loading ? (
+                    <>
+                      <Skeleton className="h-10 w-16 rounded-lg" />
+                      <Skeleton className="h-3 w-24 rounded mt-1" />
+                    </>
+                  ) : (
+                    <div className="animate-fade-in">
+                      <div className="text-5xl font-bold tracking-tight text-white leading-none">{totalArticles}</div>
+                      <p className="text-xs text-zinc-500/80 font-normal mt-1">{articlesSubText}</p>
+                    </div>
+                  )}
                 </div>
                 <div className="w-[54px] h-[54px] rounded-full bg-[#4F46E5] flex items-center justify-center text-white shadow-lg shadow-[#4F46E5]/20 shrink-0 ml-4">
                   <FileText size={22} />
@@ -399,12 +436,17 @@ export default function Home() {
                   <span className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider block">
                     Top Source
                   </span>
-                  <div className="text-5xl font-bold tracking-tight text-white leading-none truncate max-w-[200px]">
-                    {topSource}
-                  </div>
-                  <p className="text-xs text-zinc-500/80 font-normal mt-1 truncate">
-                    {topSourceCount > 0 ? `${topSourceCount} articles` : 'Scraped feed volume'}
-                  </p>
+                  {loading ? (
+                    <>
+                      <Skeleton className="h-10 w-24 rounded-lg" />
+                      <Skeleton className="h-3 w-20 rounded mt-1" />
+                    </>
+                  ) : (
+                    <div className="animate-fade-in">
+                      <div className="text-5xl font-bold tracking-tight text-white leading-none truncate max-w-[200px]">{topSource}</div>
+                      <p className="text-xs text-zinc-500/80 font-normal mt-1 truncate">{topSourceCount > 0 ? `${topSourceCount} articles` : 'Scraped feed volume'}</p>
+                    </div>
+                  )}
                 </div>
                 <div className="w-[54px] h-[54px] rounded-full bg-[#4F46E5] flex items-center justify-center text-white shadow-lg shadow-[#4F46E5]/20 shrink-0 ml-4">
                   <Award size={22} />
@@ -422,12 +464,17 @@ export default function Home() {
                   <span className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider block">
                     Last Updated
                   </span>
-                  <div className="text-5xl font-bold tracking-tight text-white leading-none">
-                    {liveTime}
-                  </div>
-                  <p className="text-xs text-zinc-500/80 font-normal mt-1">
-                    {lastUpdatedSubText}
-                  </p>
+                  {loading ? (
+                    <>
+                      <Skeleton className="h-10 w-32 rounded-lg" />
+                      <Skeleton className="h-3 w-28 rounded mt-1" />
+                    </>
+                  ) : (
+                    <div className="animate-fade-in">
+                      <div className="text-5xl font-bold tracking-tight text-white leading-none">{liveTime}</div>
+                      <p className="text-xs text-zinc-500/80 font-normal mt-1">{lastUpdatedSubText}</p>
+                    </div>
+                  )}
                 </div>
                 <div className="w-[54px] h-[54px] rounded-full bg-[#4F46E5] flex items-center justify-center text-white shadow-lg shadow-[#4F46E5]/20 shrink-0 ml-4">
                   <Clock size={22} />
@@ -444,6 +491,9 @@ export default function Home() {
             selectedClusterId={selectedClusterId}
             searchQuery={searchQuery}
             loading={loading}
+            error={error}
+            onClearSearch={() => setSearchQuery('')}
+            onRefresh={() => loadDashboardData(false)}
           />
 
           {/* Lower Grid (Trending Topics + Detail Panel) */}
@@ -453,6 +503,9 @@ export default function Home() {
               onSelectCluster={handleSelectCluster}
               selectedClusterId={selectedClusterId}
               searchQuery={searchQuery}
+              loading={loading}
+              error={error}
+              onClearSearch={() => setSearchQuery('')}
             />
 
             <ClusterDetail
@@ -463,6 +516,7 @@ export default function Home() {
               selectedSources={selectedSources}
               onChangeSources={setSelectedSources}
               availableSources={availableSources}
+              onRetry={handleRetryCluster}
             />
           </div>
 
@@ -479,6 +533,7 @@ export default function Home() {
             error={clusterError}
             page={clusterPage}
             onPageChange={setClusterPage}
+            onClearFilters={() => setSelectedSources([])}
           />
         </div>
       </div>
